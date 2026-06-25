@@ -1,7 +1,6 @@
 # Mini Market Data Terminal
 
-A small trading terminal built on the [Alpaca](https://alpaca.markets) market-data
-API. Type a ticker and get a live quote, a candlestick chart of recent history,
+A small trading terminal built on the [Alpaca](https://alpaca.markets) API for market-data. Type a ticker and get a live quote, a candlestick chart of recent history,
 and your paper-trading positions — in an institutional-style terminal UI with a
 switchable dark / light theme and a monospaced (Ubuntu Mono) font.
 
