@@ -20,6 +20,7 @@ from alpaca.data.requests import (
     StockBarsRequest,
     StockLatestQuoteRequest,
     StockLatestTradeRequest,
+    StockSnapshotRequest,
 )
 from alpaca.data.timeframe import TimeFrame
 
@@ -85,14 +86,34 @@ class MarketData:
         return self.data.get_stock_latest_trade(req)[symbol].price
 
     def snapshot(self, symbol):
-        """bid / ask / last / spread in one shot -- what the quote panel needs."""
-        q = self.quote(symbol)
-        last = self.last_trade(symbol)
-        spread = None
-        if q["bid"] and q["ask"]:
-            spread = round(q["ask"] - q["bid"], 4)
-        return {"bid": q["bid"], "ask": q["ask"], "last": last,
-                "spread": spread, "ts": q["ts"]}
+        """bid / ask / last / spread / prev-close in ONE Alpaca call.
+
+        The snapshot endpoint bundles the latest quote, the latest trade and the
+        previous daily bar, so the quote panel needs just one request per refresh
+        -- cheap enough to poll every second without hitting the rate limit.
+        """
+        req = StockSnapshotRequest(symbol_or_symbols=symbol, feed=self.feed)
+        s = self.data.get_stock_snapshot(req)[symbol]
+        bid = s.latest_quote.bid_price if s.latest_quote else None
+        ask = s.latest_quote.ask_price if s.latest_quote else None
+        last = s.latest_trade.price if s.latest_trade else None
+        ts = (s.latest_trade.timestamp if s.latest_trade
+              else s.latest_quote.timestamp if s.latest_quote else None)
+        prev = s.previous_daily_bar.close if s.previous_daily_bar else None
+        spread = round(ask - bid, 4) if (bid is not None and ask is not None) else None
+        return {"bid": bid, "ask": ask, "last": last, "spread": spread,
+                "ts": ts, "prev_close": prev}
+
+    def snapshots(self, symbols):
+        """Batch {symbol: {last, prev_close}} for a watchlist -- one request."""
+        req = StockSnapshotRequest(symbol_or_symbols=list(symbols), feed=self.feed)
+        out = {}
+        for sym, s in self.data.get_stock_snapshot(req).items():
+            out[sym] = {
+                "last": s.latest_trade.price if s.latest_trade else None,
+                "prev_close": s.previous_daily_bar.close if s.previous_daily_bar else None,
+            }
+        return out
 
     # --- streaming -------------------------------------------------------
 

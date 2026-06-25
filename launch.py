@@ -55,7 +55,6 @@ def ensure_deps():
     """Install requirements the first time if anything's missing."""
     try:
         import streamlit, alpaca, plotly, dotenv, openpyxl  # noqa: F401
-        from streamlit_autorefresh import st_autorefresh  # noqa: F401
     except ImportError:
         print("  Installing dependencies (first run only)...\n")
         subprocess.run([sys.executable, "-m", "pip", "install", "-r",

@@ -109,20 +109,27 @@ Walking through it:
   (the clients are reusable; no reason to rebuild every rerun).
 - **`load_bars(...)`** — caches the heavy historical pull, keyed on a
   `bucket = time // interval` argument so a fresh API pull only happens once per
-  bar (every 5 min for 5-min bars). Quotes are **not** cached — those refetch
-  every rerun so they're live.
-- **`prior_close()`** — previous session's close, used to compute the day's
-  change and percent (and to color the number green/red).
+  bar (every 5 min for 5-min bars). Quotes are **not** cached — the quote
+  fragment refetches them on its own ~1-second timer so they stay live.
+- **The day's change/percent** comes from the *previous close*, which the
+  connector's one-call `snapshot()` returns alongside the quote (Alpaca's snapshot
+  endpoint bundles the previous daily bar) — so no extra request is needed.
 - **The controls row** — `text_input` is the "type a ticker" requirement;
-  selectboxes/slider control the chart interval, history length, refresh cadence,
-  and the **Dark / Light theme**.
-- **`st_autorefresh(interval=…)`** — the timer that reruns the script, giving the
-  live feel. "Off" disables it. Two refinements make this pleasant to use:
-  - The **quote** is refetched every tick (fast), but the **chart's bars** are
-    cached against a `bucket = time // interval` key, so a new API pull only
-    happens once per bar (e.g. every 5 min for 5-min bars) — not every tick.
-  - The chart sets `uirevision`, so your **zoom/pan survives the auto-refresh**.
-    It only resets when you change the symbol, interval, or history length.
+  selectboxes/slider control the chart interval, history length and the
+  **Dark / Light theme**, plus a **Live bar** checkbox for the live candle.
+- **Live panels are `st.fragment`s** — instead of rerunning the whole page on a
+  timer, each live panel (quote, watchlist, positions) is wrapped as
+  `st.fragment(run_every=…)`, so it re-runs **only itself** in the background and
+  repaints just its own output — no full-page reload, no flicker. The quote is the
+  fast one (~1s); the rest are gentler to stay under Alpaca's rate limit (one
+  snapshot call now returns quote + trade + prev-close).
+  - The **chart's bars** stay cached against a `bucket = time // interval` key, so
+    a fresh API pull only happens once per bar — not on every tick.
+  - With **Live bar** on, the chart becomes a fragment that re-renders every ~2s,
+    drawing a live current-price line and growing the forming candle from the
+    latest trade. Streamlit re-creates the Plotly chart on each tick (so it can't
+    hold a mid-pan zoom), so live mode pins the view to the most recent bars --
+    turn Live bar off to pan/zoom through history.
 - **Three-column grid** — `left` market-watch, `center` chart, `right` quote
   panel; then a full-width positions table at the bottom. This is the
   brief's modular layout: watchlist / chart / quote / positions.
@@ -207,7 +214,8 @@ Walking through it:
   seller will accept; spread = ask − bid (a liquidity/cost measure).
 - **REST vs WebSocket** — pull one answer on request vs. a pushed live feed.
 - **Polling** — repeatedly asking via REST on a timer to *simulate* live (what the
-  UI does). Cheaper/simpler than wiring a websocket into the UI.
+  UI does, per-panel via Streamlit fragments). Cheaper/simpler than wiring a
+  websocket into the UI.
 - **IEX vs SIP feed** — IEX (free) is one exchange's tape; SIP (paid) is the
   consolidated national tape.
 
@@ -234,8 +242,9 @@ Have the app already running (`python3 launch.py`) and a terminal ready.
    collapsed so the candles are flush." Then open the **Data (OHLCV)** tab and
    click **Download Excel** to show the raw OHLCV export.
 5. **Live quote (40s).** Point at the quote panel — last price, bid, ask, spread,
-   and the updating timestamp. Note the refresh dropdown ("every 10 seconds it
-   repolls"). If markets are open, let it tick once on camera.
+   and the updating timestamp. It refreshes itself ~once a second in the
+   background (no button to press) — if markets are open, just let it tick on
+   camera. Mention it's a Streamlit *fragment*, so only that panel repaints.
 6. **Streaming (40s).** Switch to the terminal, run `python3 stream_quotes.py AAPL`,
    and show real quotes printing. "This is the websocket feed — Alpaca pushes
    each quote instead of us asking." Ctrl+C to stop cleanly.
@@ -283,7 +292,7 @@ pre-pick a moment when the market is open so quotes actually move.
 | Historical data retrieval | 20 | ✅ Strong | `bars()` pulls 30d of 1/5-min bars, MultiIndex flattened. Verified (566 bars returned). |
 | Historical chart | 15 | ✅ Strong | Candlestick + volume (zoomed, pannable) **plus** a Data tab with the OHLCV table and Excel/CSV export — OHLCV shown two clear ways. |
 | Real-time quote streaming | 20 | ✅ Strong | `stream_quotes.py` websocket; verified printing live quotes. |
-| UI displays bid/ask + updates | 20 | ✅ Strong | Quote panel shows bid/ask/last/spread; `st_autorefresh` repolls. To go further, drive the UI from the websocket instead of polling. |
+| UI displays bid/ask + updates | 20 | ✅ Strong | Quote panel shows bid/ask/last/spread and refreshes itself ~1×/sec in the background via `st.fragment(run_every=…)` — only that panel repaints, no full-page reload. To go further, drive it from the websocket. |
 | Code organization | 5 | ✅ Strong | Single data layer, UI/stream separated, clear names. |
 | GitHub repo completeness | 5 | ⚠️ To do | README ✅, requirements ✅, `.gitignore` ✅ — **you still need to push it and add the screenshot.** |
 | Demo video | 5 | ⚠️ To do | Use the script in section 4. |

@@ -135,13 +135,39 @@ grid was rebuilt as a themed HTML table — `st.dataframe` is a canvas that can'
 themed or set to a monospace font, so the new table follows the theme and the font,
 shows the newest 500 rows on screen, and the downloads keep the full set.
 
+## 18. Continuous background refresh + an optional live candle
+The "Refresh" dropdown (a full-page `st_autorefresh` timer) was replaced. **Why:**
+rerunning the whole page felt like a website reloading. **Fix:** each live panel is
+now a `st.fragment(run_every=…)` that re-runs only itself in the background -- the
+quote every ~1s, watchlist/positions gentler -- so just that panel repaints, with
+no full-page reload. `data_connector.snapshot()` was switched to Alpaca's one-call
+snapshot endpoint (quote + trade + prev-close in a single request), which keeps
+1-second polling well under the rate limit and removed the separate `prior_close()`
+call. An opt-in **Live bar** toggle grows the forming candle from the latest trade
+(the chart becomes a 2s fragment); it's off by default because Streamlit redraws
+the whole chart each tick -- the buttery tick-streaming version would need a
+different charting library. `streamlit-autorefresh` was dropped from the
+dependencies. Verified live: the quote updates with no interaction and no full-page
+reload, and the chart stays static until Live bar is on.
+
+## 19. Live bar looked broken -- fixed the view-reset + invisibility
+Two issues made Live bar feel like it did nothing. (1) Streamlit re-creates the
+Plotly chart on every fragment tick, so `uirevision` couldn't preserve a mid-pan
+zoom -- the view snapped back every ~2s. (2) A few cents of candle movement is
+invisible on a multi-day chart, so it looked like nothing was happening. **Fix:**
+added a full-width live **current-price line** (the real-terminal cue) that jumps
+with each trade, and pinned the view to the most recent bars while Live bar is on
+(stable when watching; turn it off to pan history). Verified live: the price line
+renders and updates and the view no longer jumps while watching.
+
 ---
 
 ## Current state
 The chart is clean from every angle tested: regular-hours only, no
 weekend/overnight/holiday gaps, opens on a readable ~2-session zoom, pans to the
-full 30 days, zoom survives auto-refresh, and labels never collide. The terminal
-runs in a monospaced Ubuntu Mono font with a working **Dark/Light theme** across
-every panel, control, and the chart; the OHLCV table and the Excel/CSV export work.
+full 30 days, zoom survives re-renders, and labels never collide. The terminal runs
+in a monospaced Ubuntu Mono font with a working **Dark/Light theme**; the live
+panels (quote, watchlist, positions) refresh themselves in the background via
+fragments -- no full-page reload -- and the OHLCV table and Excel/CSV export work.
 The data layer is verified live against Alpaca. Open items are the two manual
 deliverables: push to GitHub and record the 2–5 min demo (see `GUIDE.md` §4–5).

@@ -15,9 +15,10 @@ switchable dark / light theme and a monospaced (Ubuntu Mono) font.
 - **Live UI** (`app.py`) — Streamlit terminal: ticker entry, a live bid/ask/last
   quote panel, a candlestick + volume chart, a market-watch list, and a positions
   table. A **Dark / Light theme** toggle restyles the whole terminal (and the
-  chart) on the fly, all in a monospaced **Ubuntu Mono** font. Auto-refreshes on a
-  timer (chart data at the bar interval, quote every tick), and your chart zoom
-  survives refreshes. A second **Data (OHLCV)** tab shows the bars as a themed
+  chart) on the fly, all in a monospaced **Ubuntu Mono** font. The quote,
+  watchlist and positions **refresh themselves continuously in the background**
+  (Streamlit fragments — no full-page reload); an optional **Live bar** toggle
+  grows the forming candle in real time. A second **Data (OHLCV)** tab shows the bars as a themed
   table (newest rows on screen) with one-click **Excel/CSV** download of the full
   set.
 - **Quote streamer** (`stream_quotes.py`) — command-line websocket stream of
@@ -69,9 +70,10 @@ py -m streamlit run app.py
 - **Drag** left/right — pan through time
 - **Double-click** (or the home icon) — snap back to the full 30 days
 - **Mouse-wheel** — zoom in/out
-- **Interval / History / Refresh / Theme** controls sit above the terminal; the
+- **Interval / History / Theme / Live bar** controls sit above the terminal; the
   **Data (OHLCV)** tab has the table (newest 500 rows on screen) + Excel/CSV
-  download of the full range.
+  download of the full range. The quote, watchlist and positions update on their
+  own in the background — there's no refresh button to set.
 
 The chart shows **regular trading hours only (9:30–16:00 ET)** and collapses
 weekends, overnight gaps, and market holidays so candles stay flush.
@@ -91,6 +93,11 @@ python3 stream_quotes.py AAPL
 - **One stream at a time.** The free Alpaca plan allows a single live websocket
   connection. Running two streamers at once gives `connection limit exceeded`.
 - Free accounts use the **IEX** feed (a subset of US volume), which is fine here.
+- **Live updates.** The quote (every ~1s), watchlist and positions refresh
+  themselves in the background via Streamlit fragments — no full-page reload and
+  no refresh control. Tick **Live bar** to add a live current-price line and grow
+  the forming candle; the chart then tracks the most recent bars (turn it off to
+  pan/zoom through history).
 - **Theme.** The **Theme** dropdown switches the whole terminal between dark and
   light (defaults to dark).
 - Always launch with `python3 -m streamlit run app.py` (or `py -m streamlit run
