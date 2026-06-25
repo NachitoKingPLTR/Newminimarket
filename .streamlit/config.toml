@@ -1,0 +1,5 @@
+# Pin a deterministic base theme. The app's own CSS (in app.py) themes the panels,
+# chart, and widgets on top of this via the Dark/Light toggle; this just makes the
+# default Streamlit chrome predictable instead of OS-dependent.
+[theme]
+base = "dark"

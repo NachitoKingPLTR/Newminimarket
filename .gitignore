@@ -1,0 +1,15 @@
+# Never commit real secrets
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Jupyter / OS
+.ipynb_checkpoints/
+.DS_Store
+
+# Editor / tool config (not part of the project)
+.claude/
